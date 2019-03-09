@@ -46,25 +46,42 @@ const doMonad = <V, M>(initialValue: V, monad: Monad<M, V>) => (...fns: monadF[]
     return compose(...sequence)(monad.pure(initialValue))
 }
 
-const shouldCheckForEnemy = (x: boolean) => x ? new Just(x) : new Nothing()
-const isEnemyInSight = (x: boolean) => x ? new Just(x) : new Nothing()
-const rocketsAreLoaded = (x: boolean) => x ? new Just(x) : new Nothing()
-const aimForTarget = () => new Right(true)
-const shotAtTarget = () => new Left("damn, missed")
+const checkForEnemy = (shouldInitializeCheck: boolean) => shouldInitializeCheck ? new Just("enemy1") : new Nothing()
+const chooseAmmoForTarget = (x: string) => x === "enemy1" ? new Just(["rockets", x]) : new Nothing()
+const getTargetHandlerIfAmmoLoaded = (x: string[]) => x[0] === "rockets" ? new Just(x[1]) : new Nothing()
+const aimForTarget = (x: string) => new Right(x)
+const shotAtTarget = (x: string) => new Left(x + " missed")
 
 const rocketSystemResult = doMonad(true, new EitherMonad)(
-    x => new Right(doMonad(x, new MaybeMonad)(
-        k => shouldCheckForEnemy(k),
-        k => isEnemyInSight(k),
-        k => rocketsAreLoaded(k)
+    init => new Right(doMonad(init, new MaybeMonad)(
+        init => checkForEnemy(init),
+        enemy => chooseAmmoForTarget(enemy),
+        ammo => getTargetHandlerIfAmmoLoaded(ammo)
     )),
-    x => (x instanceof Just && x.value === true)
-        ? aimForTarget()
+    target => (target instanceof Just)
+        ? aimForTarget(target.value)
         : new Left("rocket system not used"),
-    x => x
-        ? shotAtTarget()
-        : new Left("could not aim")
+    target => shotAtTarget(target)
 )
+
+// const rocketSystemResultImperative = (init: boolean) => {
+//     const enemy = checkForEnemy(init);
+//     let target = null;
+//     if(enemy !== null){
+//         const ammo = chooseAmmoForTarget(enemy);
+//         if(ammo !== null){
+//             target = getTargetHandlerIfAmmoLoaded(ammo);
+//         }
+//     }
+//     if(target === null){
+//         return "rocket system not used"
+//     }else{
+//         const aim = aimForTarget(target)
+//         if(aim !== null){
+//             return shotAtTarget(target)
+//         }
+//     }
+// }
 
 const simpleMathsResult = doMonad(7, new MaybeMonad)(
     x => new Just(x + 2),
